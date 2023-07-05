@@ -89,12 +89,17 @@ var (
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
 	;`
+
+	pgStatStatementsReset = `SELECT 
+		pg_stat_statements_reset()
+	;`
 )
 
 func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx,
 		pgStatStatementsQuery)
+	defer db.ExecContext(ctx, pgStatStatementsReset)
 
 	if err != nil {
 		return err
