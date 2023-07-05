@@ -97,8 +97,7 @@ var (
 
 func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
-	rows, err := db.QueryContext(ctx,
-		pgStatStatementsQuery)
+	rows, err := db.QueryContext(ctx, pgStatStatementsQuery)
 	defer db.ExecContext(ctx, pgStatStatementsReset)
 
 	if err != nil {
