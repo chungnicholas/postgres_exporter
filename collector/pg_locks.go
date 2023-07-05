@@ -24,7 +24,7 @@ import (
 const locksSubsystem = "locks"
 
 func init() {
-	registerCollector(locksSubsystem, defaultEnabled, NewPGLocksCollector)
+	registerCollector(locksSubsystem, defaultDisabled, NewPGLocksCollector)
 }
 
 type PGLocksCollector struct {
