@@ -95,15 +95,27 @@ var (
 	;`
 )
 
+type pgStatStatementsRow struct {
+	user                   sql.NullString
+	datname                sql.NullString
+	queryid                sql.NullString
+	callsTotal             sql.NullInt64
+	meanSecondsTotal       sql.NullFloat64
+	maxSecondsTotal        sql.NullFloat64
+	rowsTotal              sql.NullInt64
+	blockReadSecondsTotal  sql.NullFloat64
+	blockWriteSecondsTotal sql.NullFloat64
+}
+
 func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
 	db := instance.getDB()
 	rows, err := db.QueryContext(ctx, pgStatStatementsQuery)
-	defer db.ExecContext(ctx, pgStatStatementsReset)
-
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	var rowMetrics []pgStatStatementsRow
+
+	// save metrics to array then reset statistics
 	for rows.Next() {
 		var user, datname, queryid sql.NullString
 		var callsTotal, rowsTotal sql.NullInt64
@@ -113,22 +125,44 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			return err
 		}
 
+		newPgStatementsRow := pgStatStatementsRow{
+			user:                   user,
+			datname:                datname,
+			queryid:                queryid,
+			callsTotal:             callsTotal,
+			meanSecondsTotal:       meanSecondsTotal,
+			maxSecondsTotal:        maxSecondsTotal,
+			rowsTotal:              rowsTotal,
+			blockReadSecondsTotal:  blockReadSecondsTotal,
+			blockWriteSecondsTotal: blockWriteSecondsTotal,
+		}
+
+		rowMetrics = append(rowMetrics, newPgStatementsRow)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+	db.ExecContext(ctx, pgStatStatementsReset)
+
+	// log metrics to prometheus
+	for _, row := range rowMetrics {
 		userLabel := "unknown"
-		if user.Valid {
-			userLabel = user.String
+		if row.user.Valid {
+			userLabel = row.user.String
 		}
 		datnameLabel := "unknown"
-		if datname.Valid {
-			datnameLabel = datname.String
+		if row.datname.Valid {
+			datnameLabel = row.datname.String
 		}
 		queryidLabel := "unknown"
-		if queryid.Valid {
-			queryidLabel = queryid.String
+		if row.queryid.Valid {
+			queryidLabel = row.queryid.String
 		}
 
 		callsTotalMetric := 0.0
-		if callsTotal.Valid {
-			callsTotalMetric = float64(callsTotal.Int64)
+		if row.callsTotal.Valid {
+			callsTotalMetric = float64(row.callsTotal.Int64)
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statSTatementsCallsTotal,
@@ -138,8 +172,8 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 		)
 
 		meanSecondsTotalMetric := 0.0
-		if meanSecondsTotal.Valid {
-			meanSecondsTotalMetric = meanSecondsTotal.Float64
+		if row.meanSecondsTotal.Valid {
+			meanSecondsTotalMetric = row.meanSecondsTotal.Float64
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsMeanSecondsTotal,
@@ -149,8 +183,8 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 		)
 
 		maxSecondsTotalMetric := 0.0
-		if maxSecondsTotal.Valid {
-			maxSecondsTotalMetric = maxSecondsTotal.Float64
+		if row.maxSecondsTotal.Valid {
+			maxSecondsTotalMetric = row.maxSecondsTotal.Float64
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsMaxSecondsTotal,
@@ -160,8 +194,8 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 		)
 
 		rowsTotalMetric := 0.0
-		if rowsTotal.Valid {
-			rowsTotalMetric = float64(rowsTotal.Int64)
+		if row.rowsTotal.Valid {
+			rowsTotalMetric = float64(row.rowsTotal.Int64)
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsRowsTotal,
@@ -171,8 +205,8 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 		)
 
 		blockReadSecondsTotalMetric := 0.0
-		if blockReadSecondsTotal.Valid {
-			blockReadSecondsTotalMetric = blockReadSecondsTotal.Float64
+		if row.blockReadSecondsTotal.Valid {
+			blockReadSecondsTotalMetric = row.blockReadSecondsTotal.Float64
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsBlockReadSecondsTotal,
@@ -182,8 +216,8 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 		)
 
 		blockWriteSecondsTotalMetric := 0.0
-		if blockWriteSecondsTotal.Valid {
-			blockWriteSecondsTotalMetric = blockWriteSecondsTotal.Float64
+		if row.blockWriteSecondsTotal.Valid {
+			blockWriteSecondsTotalMetric = row.blockWriteSecondsTotal.Float64
 		}
 		ch <- prometheus.MustNewConstMetric(
 			statStatementsBlockWriteSecondsTotal,
@@ -192,8 +226,6 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			userLabel, datnameLabel, queryidLabel,
 		)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
+
 	return nil
 }
