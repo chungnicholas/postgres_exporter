@@ -45,9 +45,15 @@ var (
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
-	statStatementsSecondsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, statStatementsSubsystem, "seconds_total"),
-		"Total time spent in the statement, in seconds",
+	statStatementsMeanSecondsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "mean_seconds_total"),
+		"Mean total time spent in the statement, in seconds",
+		[]string{"user", "datname", "queryid"},
+		prometheus.Labels{},
+	)
+	statStatementsMaxSecondsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, statStatementsSubsystem, "max_seconds_total"),
+		"Max total time spent in the statement, in seconds",
 		[]string{"user", "datname", "queryid"},
 		prometheus.Labels{},
 	)
@@ -75,21 +81,14 @@ var (
 		pg_database.datname,
 		pg_stat_statements.queryid,
 		pg_stat_statements.calls as calls_total,
-		pg_stat_statements.total_time / 1000.0 as seconds_total,
-		pg_stat_statements.rows as rows_total,
+		pg_stat_statements.mean_plan_time + pg_stat_statements.mean_exec_time / 1000.0 as mean_seconds_total,
+		pg_stat_statements.max_plan_time + pg_stat_statements.max_exec_time / 1000.0 as max_seconds_total,
 		pg_stat_statements.blk_read_time / 1000.0 as block_read_seconds_total,
 		pg_stat_statements.blk_write_time / 1000.0 as block_write_seconds_total
-		FROM pg_stat_statements
+	FROM pg_stat_statements
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
-	WHERE
-		total_time > (
-		SELECT percentile_cont(0.1)
-			WITHIN GROUP (ORDER BY total_time)
-			FROM pg_stat_statements
-		)
-	ORDER BY seconds_total DESC
-	LIMIT 100;`
+	;`
 )
 
 func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance, ch chan<- prometheus.Metric) error {
@@ -104,9 +103,9 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 	for rows.Next() {
 		var user, datname, queryid sql.NullString
 		var callsTotal, rowsTotal sql.NullInt64
-		var secondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
+		var meanSecondsTotal, maxSecondsTotal, blockReadSecondsTotal, blockWriteSecondsTotal sql.NullFloat64
 
-		if err := rows.Scan(&user, &datname, &queryid, &callsTotal, &secondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
+		if err := rows.Scan(&user, &datname, &queryid, &callsTotal, &meanSecondsTotal, &maxSecondsTotal, &rowsTotal, &blockReadSecondsTotal, &blockWriteSecondsTotal); err != nil {
 			return err
 		}
 
@@ -134,14 +133,25 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
-		secondsTotalMetric := 0.0
-		if secondsTotal.Valid {
-			secondsTotalMetric = secondsTotal.Float64
+		meanSecondsTotalMetric := 0.0
+		if meanSecondsTotal.Valid {
+			meanSecondsTotalMetric = meanSecondsTotal.Float64
 		}
 		ch <- prometheus.MustNewConstMetric(
-			statStatementsSecondsTotal,
+			statStatementsMeanSecondsTotal,
 			prometheus.CounterValue,
-			secondsTotalMetric,
+			meanSecondsTotalMetric,
+			userLabel, datnameLabel, queryidLabel,
+		)
+
+		maxSecondsTotalMetric := 0.0
+		if maxSecondsTotal.Valid {
+			maxSecondsTotalMetric = maxSecondsTotal.Float64
+		}
+		ch <- prometheus.MustNewConstMetric(
+			statStatementsMaxSecondsTotal,
+			prometheus.CounterValue,
+			maxSecondsTotalMetric,
 			userLabel, datnameLabel, queryidLabel,
 		)
 
