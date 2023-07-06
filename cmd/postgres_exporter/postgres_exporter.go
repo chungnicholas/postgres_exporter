@@ -163,19 +163,19 @@ func dumpMaps() {
 }
 
 var builtinMetricMaps = map[string]intermediateMetricMap{
-	"pg_stat_database_conflicts": {
-		map[string]ColumnMapping{
-			"datid":            {LABEL, "OID of a database", nil, nil},
-			"datname":          {LABEL, "Name of this database", nil, nil},
-			"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil, nil},
-			"confl_lock":       {COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil, nil},
-			"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
-			"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
-			"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
-		},
-		true,
-		0,
-	},
+	//"pg_stat_database_conflicts": {
+	//	map[string]ColumnMapping{
+	//		"datid":            {LABEL, "OID of a database", nil, nil},
+	//		"datname":          {LABEL, "Name of this database", nil, nil},
+	//		"confl_tablespace": {COUNTER, "Number of queries in this database that have been canceled due to dropped tablespaces", nil, nil},
+	//		"confl_lock":       {COUNTER, "Number of queries in this database that have been canceled due to lock timeouts", nil, nil},
+	//		"confl_snapshot":   {COUNTER, "Number of queries in this database that have been canceled due to old snapshots", nil, nil},
+	//		"confl_bufferpin":  {COUNTER, "Number of queries in this database that have been canceled due to pinned buffers", nil, nil},
+	//		"confl_deadlock":   {COUNTER, "Number of queries in this database that have been canceled due to deadlocks", nil, nil},
+	//	},
+	//	true,
+	//	0,
+	//},
 	"pg_stat_replication": {
 		map[string]ColumnMapping{
 			"procpid":                  {DISCARD, "Process ID of a WAL sender process", nil, semver.MustParseRange("<9.2.0")},

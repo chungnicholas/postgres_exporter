@@ -23,7 +23,7 @@ import (
 const bgWriterSubsystem = "stat_bgwriter"
 
 func init() {
-	registerCollector(bgWriterSubsystem, defaultEnabled, NewPGStatBGWriterCollector)
+	registerCollector(bgWriterSubsystem, defaultDisabled, NewPGStatBGWriterCollector)
 }
 
 type PGStatBGWriterCollector struct {

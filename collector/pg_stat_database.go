@@ -23,7 +23,7 @@ import (
 const statDatabaseSubsystem = "stat_database"
 
 func init() {
-	registerCollector(statDatabaseSubsystem, defaultEnabled, NewPGStatDatabaseCollector)
+	registerCollector(statDatabaseSubsystem, defaultDisabled, NewPGStatDatabaseCollector)
 }
 
 type PGStatDatabaseCollector struct{}

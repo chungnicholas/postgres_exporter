@@ -22,7 +22,7 @@ import (
 const replicationSubsystem = "replication"
 
 func init() {
-	registerCollector(replicationSubsystem, defaultEnabled, NewPGReplicationCollector)
+	registerCollector(replicationSubsystem, defaultDisabled, NewPGReplicationCollector)
 }
 
 type PGReplicationCollector struct {
