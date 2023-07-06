@@ -127,7 +127,7 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			return err
 		}
 
-		newPgStatementsRow := pgStatStatementsRow{
+		rowMetrics = append(rowMetrics, pgStatStatementsRow{
 			user:                   user,
 			datname:                datname,
 			query:                  query,
@@ -137,11 +137,10 @@ func (PGStatStatementsCollector) Update(ctx context.Context, instance *instance,
 			rowsTotal:              rowsTotal,
 			blockReadSecondsTotal:  blockReadSecondsTotal,
 			blockWriteSecondsTotal: blockWriteSecondsTotal,
-		}
-
-		rowMetrics = append(rowMetrics, newPgStatementsRow)
+		})
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return err
 	}
 	rows.Close()
