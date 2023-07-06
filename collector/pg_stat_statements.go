@@ -75,6 +75,7 @@ var (
 		prometheus.Labels{},
 	)
 
+	// get statistics of all queries except pg_setting
 	pgStatStatementsQuery = `SELECT
 		pg_get_userbyid(userid) as user,
 		pg_database.datname,
@@ -88,6 +89,7 @@ var (
 	FROM pg_stat_statements
 	JOIN pg_database
 		ON pg_database.oid = pg_stat_statements.dbid
+	WHERE pg_stat_statements.query NOT LIKE '%pg_setting%'
 	;`
 
 	pgStatStatementsReset = `SELECT 
